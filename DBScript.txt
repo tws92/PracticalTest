@@ -1,0 +1,173 @@
+CREATE DATABASE StudentRegistration;
+
+USE StudentRegistration;
+
+CREATE TABLE Users (
+    Id INT PRIMARY KEY IDENTITY,
+    NRIC NVARCHAR(10) NOT NULL,
+    Name NVARCHAR(100) NOT NULL,
+    Gender CHAR(1) NOT NULL,
+    Birthday DATE NOT NULL,
+    Age INT NOT NULL,
+    AvailableDate DATE NULL
+);
+	
+CREATE TABLE Subjects (
+    Id INT PRIMARY KEY IDENTITY,
+    Subject NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE UserSubject (
+    UserId INT NOT NULL,
+    SubjectId INT NOT NULL
+);
+
+CREATE TABLE AuditLog (
+    Id INT PRIMARY KEY IDENTITY,
+    UserId INT NOT NULL,
+    PrevVal NVARCHAR(MAX) NULL,
+    AfterVal NVARCHAR(MAX) NULL,
+    Timestamp DATETIME DEFAULT GETDATE()
+);
+
+CREATE TYPE IntList AS TABLE 
+(
+    Value INT
+);
+
+INSERT INTO Subjects (Subject) VALUES ('English'), ('Math'), ('Science');
+
+
+
+CREATE PROCEDURE GettAllSubjects 
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	SELECT Id, Subject FROM Subjects
+END
+GO
+
+
+
+CREATE PROCEDURE InsertUser
+	@NRIC NVARCHAR(20),
+    @Name NVARCHAR(100),
+    @Gender NVARCHAR(10),
+    @Birthday DATE,
+    @Age INT,
+    @AvailableDate DATE = NULL,
+    @Subjects IntList READONLY
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @UserId INT;
+	
+	INSERT INTO Users (NRIC, Name, Gender, Birthday, Age, AvailableDate)
+    VALUES (@NRIC, @Name, @Gender, @Birthday, @Age, @AvailableDate);
+	SET @UserId = SCOPE_IDENTITY();
+    -- Check if @Subjects is not empty
+    IF EXISTS (SELECT 1 FROM @Subjects)
+    BEGIN
+        INSERT INTO UserSubject (UserId, SubjectId)
+        SELECT @UserId, Value FROM @Subjects;
+    END
+END
+GO
+
+
+
+CREATE PROCEDURE GettUser
+	@NameOrNRIC NVARCHAR(100),
+	@Id INT = 0
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	IF @NameOrNRIC = '' AND @Id = 0
+		SELECT DISTINCT
+		A.Id AS ID, 
+		A.NRIC AS NRIC, 
+		A.Name AS NAME, 
+		A.Gender AS GENDER, 
+		A.Birthday AS BIRTHDAY,
+		A.Age AS AGE,
+		A.AvailableDate AS AVAILABLEDATE,
+		(
+            SELECT s.Id, s.Subject
+            FROM Subjects s
+            INNER JOIN UserSubject us ON us.SubjectId = s.Id
+            WHERE us.UserId = A.Id
+            FOR JSON PATH
+        ) AS Subjects
+		FROM Users A 
+		LEFT JOIN UserSubject B
+		ON A.Id = B.UserId
+	ELSE
+		SELECT DISTINCT
+		A.Id AS ID, 
+		A.NRIC AS NRIC, 
+		A.Name AS NAME, 
+		A.Gender AS GENDER, 
+		A.Birthday AS BIRTHDAY,
+		A.Age AS AGE,
+		A.AvailableDate AS AVAILABLEDATE,
+		(
+            SELECT s.Id, s.Subject
+            FROM Subjects s
+            INNER JOIN UserSubject us ON us.SubjectId = s.Id
+            WHERE us.UserId = A.Id
+            FOR JSON PATH
+        ) AS Subjects
+		FROM Users A 
+		LEFT JOIN UserSubject B
+		ON A.Id = B.UserId
+		WHERE A.NRIC = @NameOrNRIC OR A.Name = @NameOrNRIC OR A.Id = @Id
+
+END
+GO
+
+
+CREATE PROCEDURE UpdateUser
+    @Id INT,
+    @NRIC NVARCHAR(20),
+    @Name NVARCHAR(100),
+    @Gender NVARCHAR(10),
+    @Birthday DATE,
+    @Age INT,
+    @AvailableDate DATE = NULL,
+    @Subjects IntList READONLY
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE Users
+    SET NRIC = @NRIC,
+        Name = @Name,
+        Gender = @Gender,
+        Birthday = @Birthday,
+		Age = @Age,
+        AvailableDate = @AvailableDate
+    WHERE Id = @Id;
+
+    DELETE FROM UserSubject WHERE UserId = @Id;
+
+    INSERT INTO UserSubject (UserId, SubjectId)
+    SELECT @Id, Value FROM @Subjects;
+END
+GO
+
+
+CREATE PROCEDURE InsertAuditLog
+	@UserId INT,
+	@PrevVal NVARCHAR(MAX),
+    @AfterVal NVARCHAR(MAX)
+AS
+BEGIN
+	SET NOCOUNT ON;
+	
+	INSERT INTO AuditLog (UserId, PrevVal, AfterVal)
+    VALUES (@UserId, @PrevVal, @AfterVal);
+	SET @UserId = SCOPE_IDENTITY();
+END
+GO
