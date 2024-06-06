@@ -1,0 +1,45 @@
+﻿@model List<PracticalTest.Models.UsersModel>
+
+@{
+    ViewBag.Title = "User List";
+}
+
+<button onclick="location.href='@Url.Action("Register", "User")'">Register</button>
+
+<div class="container">
+    <h2>User List</h2>
+
+    <form method="get" action="@Url.Action("Index", "User")">
+        <div class="form-group">
+            <label for="nric">NRIC</label>
+            <input type="text" class="form-control" id="NRICOrName" name="NRICOrName" value="@Request.QueryString["NRICOrName"]" />
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <table class="table">
+        <thead class="thead-light">
+            <tr>
+                <th>S/N</th>
+                <th>NRIC</th>
+                <th>Name</th>
+                <th>Gender</th>
+                <th>Age</th>
+                <th>NO. Of Subjects</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td>@user.Id</td>
+                    <td><a href="@Url.Action("Edit", "User", new { id = user.Id })">@user.NRIC</a></td>
+                    <td>@user.Name</td>
+                    <td>@user.Gender</td>
+                    <td>@user.Age</td>
+                    <td>@user.SubjectCount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
