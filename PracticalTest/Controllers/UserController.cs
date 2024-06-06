@@ -1,4 +1,5 @@
-﻿using PracticalTest.Models;
+﻿using Newtonsoft.Json;
+using PracticalTest.Models;
 using PracticalTest.Repo;
 using System;
 using System.Collections.Generic;
@@ -46,7 +47,7 @@ namespace PracticalTest.Controllers
 
                 user.Age = AgeCalculator(user.Birthday);
                 _userRepository.InsertUser(user);
-                _userRepository.InsertAuditLog(_userRepository.GetUser(NameORNRIC: user.NRIC, userId: 0).FirstOrDefault().Id, null, user);
+                _userRepository.InsertAuditLog(_userRepository.GetUser(NameORNRIC: user.NRIC, userId: 0).FirstOrDefault().Id, string.Empty, JsonConvert.SerializeObject(user));
                 return RedirectToAction("Index");
             }
 
@@ -80,7 +81,10 @@ namespace PracticalTest.Controllers
                 var prevVal = _userRepository.GetUser(NameORNRIC: user.NRIC, userId: user.Id).FirstOrDefault();
                 user.Age = AgeCalculator(user.Birthday);
                 _userRepository.UpdateUser(user);
-                _userRepository.InsertAuditLog(user.Id, prevVal, user);
+                if (JsonConvert.SerializeObject(prevVal) != JsonConvert.SerializeObject(user))
+                {
+                    _userRepository.InsertAuditLog(user.Id, JsonConvert.SerializeObject(prevVal), JsonConvert.SerializeObject(user));
+                }
                 return RedirectToAction("Index");
             }
 

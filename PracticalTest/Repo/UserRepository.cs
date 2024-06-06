@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using NLog;
 using PracticalTest.Extension;
 using PracticalTest.Models;
 using System;
@@ -12,6 +13,7 @@ namespace PracticalTest.Repo
     public class UserRepository
     {
         private string _connectionString;
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         public UserRepository()
         {
@@ -20,63 +22,90 @@ namespace PracticalTest.Repo
 
         public void InsertUser(UsersModel users)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("InsertUser", connection))
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-
-                    // Add parameters
-                    command.Parameters.AddWithValue("@NRIC", users.NRIC);
-                    command.Parameters.AddWithValue("@Name", users.Name);
-                    command.Parameters.AddWithValue("@Gender", users.Gender);
-                    command.Parameters.AddWithValue("@Birthday", users.Birthday);
-                    command.Parameters.AddWithValue("@Age", users.Age);
-                    command.Parameters.AddWithValue("@AvailableDate", users.AvailableDate ?? (object)DBNull.Value);
-                    SqlParameter subjectsParam = command.Parameters.AddWithValue("@Subjects", users.Subjects.ToDataTable());
-
                     connection.Open();
-                    command.ExecuteNonQuery();
+                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    {
+                        try
+                        {
+                            using (SqlCommand command = new SqlCommand("InsertUser", connection, transaction))
+                            {
+                                command.CommandType = CommandType.StoredProcedure;
+
+                                // Add parameters
+                                command.Parameters.AddWithValue("@NRIC", users.NRIC);
+                                command.Parameters.AddWithValue("@Name", users.Name);
+                                command.Parameters.AddWithValue("@Gender", users.Gender);
+                                command.Parameters.AddWithValue("@Birthday", users.Birthday);
+                                command.Parameters.AddWithValue("@Age", users.Age);
+                                command.Parameters.AddWithValue("@AvailableDate", users.AvailableDate ?? (object)DBNull.Value);
+                                SqlParameter subjectsParam = command.Parameters.AddWithValue("@Subjects", users.Subjects.ToDataTable());
+
+                                command.ExecuteNonQuery();
+                            }
+
+                            transaction.Commit();
+                        }
+                        catch (Exception)
+                        {
+                            // Rollback the transaction if an error occurs
+                            transaction.Rollback();
+                            throw; // Rethrow the exception to be handled globally
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while updating user details: {Message}", ex.Message);
             }
         }
 
         public List<UsersModel> GetUser(string NameORNRIC, int userId)
         {
             List<UsersModel> usersList = new List<UsersModel>();
-
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("GettUser", connection))
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("@NameOrNRIC", NameORNRIC);
-                    command.Parameters.AddWithValue("@Id", userId);
-                    connection.Open();
-
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (SqlCommand command = new SqlCommand("GettUser", connection))
                     {
-                        while (reader.Read())
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@NameOrNRIC", NameORNRIC);
+                        command.Parameters.AddWithValue("@Id", userId);
+                        connection.Open();
+
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            UsersModel user = new UsersModel
+                            while (reader.Read())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("ID")),
-                                NRIC = reader["NRIC"].ToString(),
-                                Name = reader["NAME"].ToString(),
-                                Gender = reader["GENDER"].ToString(),
-                                Birthday = reader.GetDateTime(reader.GetOrdinal("Birthday")),
-                                Age = reader.GetInt32(reader.GetOrdinal("AGE")),
-                                AvailableDate = reader.IsDBNull(reader.GetOrdinal("AvailableDate"))
-                                            ? (DateTime?)null
-                                            : reader.GetDateTime(reader.GetOrdinal("AvailableDate")),
-                                SelectedSubjectList = !reader.IsDBNull(reader.GetOrdinal("Subjects"))
-                                       ? JsonConvert.DeserializeObject<List<SubjectsModel>>(reader["Subjects"].ToString())
-                                       : new List<SubjectsModel>(),
-                            };
-                            usersList.Add(user);
+                                UsersModel user = new UsersModel
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("ID")),
+                                    NRIC = reader["NRIC"].ToString(),
+                                    Name = reader["NAME"].ToString(),
+                                    Gender = reader["GENDER"].ToString(),
+                                    Birthday = reader.GetDateTime(reader.GetOrdinal("Birthday")),
+                                    Age = reader.GetInt32(reader.GetOrdinal("AGE")),
+                                    AvailableDate = reader.IsDBNull(reader.GetOrdinal("AvailableDate"))
+                                                ? (DateTime?)null
+                                                : reader.GetDateTime(reader.GetOrdinal("AvailableDate")),
+                                    SelectedSubjectList = !reader.IsDBNull(reader.GetOrdinal("Subjects"))
+                                           ? JsonConvert.DeserializeObject<List<SubjectsModel>>(reader["Subjects"].ToString())
+                                           : new List<SubjectsModel>(),
+                                };
+                                usersList.Add(user);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while updating user details: {Message}", ex.Message);
             }
 
             return usersList;
@@ -84,24 +113,45 @@ namespace PracticalTest.Repo
 
         public void UpdateUser(UsersModel user)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("UpdateUser", connection))
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-
-                    command.Parameters.AddWithValue("@Id", user.Id);
-                    command.Parameters.AddWithValue("@NRIC", user.NRIC);
-                    command.Parameters.AddWithValue("@Name", user.Name);
-                    command.Parameters.AddWithValue("@Gender", user.Gender);
-                    command.Parameters.AddWithValue("@Birthday", user.Birthday);
-                    command.Parameters.AddWithValue("@Age", user.Age);
-                    command.Parameters.AddWithValue("@AvailableDate", (object)user.AvailableDate ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@Subjects", user.Subjects.ToDataTable());
-
                     connection.Open();
-                    command.ExecuteNonQuery();
+                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    {
+                        try
+                        {
+                            using (SqlCommand command = new SqlCommand("UpdateUser", connection, transaction))
+                            {
+                                command.CommandType = CommandType.StoredProcedure;
+
+                                command.Parameters.AddWithValue("@Id", user.Id);
+                                command.Parameters.AddWithValue("@NRIC", user.NRIC);
+                                command.Parameters.AddWithValue("@Name", user.Name);
+                                command.Parameters.AddWithValue("@Gender", user.Gender);
+                                command.Parameters.AddWithValue("@Birthday", user.Birthday);
+                                command.Parameters.AddWithValue("@Age", user.Age);
+                                command.Parameters.AddWithValue("@AvailableDate", (object)user.AvailableDate ?? DBNull.Value);
+                                command.Parameters.AddWithValue("@Subjects", user.Subjects.ToDataTable());
+
+                                command.ExecuteNonQuery();
+                            }
+
+                            transaction.Commit();
+                        }
+                        catch (Exception)
+                        {
+                            // Rollback the transaction if an error occurs
+                            transaction.Rollback();
+                            throw; // Rethrow the exception to be handled globally
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while updating user details: {Message}", ex.Message);
             }
         }
 
@@ -109,47 +159,75 @@ namespace PracticalTest.Repo
         {
             List<SubjectsModel> subjectsList = new List<SubjectsModel>();
 
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("GettAllSubjects", connection))
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    connection.Open();
-
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    using (SqlCommand command = new SqlCommand("GettAllSubjects", connection))
                     {
-                        while (reader.Read())
+                        command.CommandType = CommandType.StoredProcedure;
+                        connection.Open();
+
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            SubjectsModel subject = new SubjectsModel
+                            while (reader.Read())
                             {
-                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                                Subject = reader["Subject"].ToString(),
-                            };
-                            subjectsList.Add(subject);
+                                SubjectsModel subject = new SubjectsModel
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                    Subject = reader["Subject"].ToString(),
+                                };
+                                subjectsList.Add(subject);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while updating user details: {Message}", ex.Message);
             }
 
             return subjectsList;
         }
 
-        public void InsertAuditLog(int userId, UsersModel prevVal, UsersModel afterVal)
+        public void InsertAuditLog(int userId, string prevVal, string afterVal)
         {
-            using (SqlConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                using (SqlCommand command = new SqlCommand("InsertAuditLog", connection))
+                using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-
-                    // Add parameters
-                    command.Parameters.AddWithValue("@UserId", userId);
-                    command.Parameters.AddWithValue("@PrevVal", JsonConvert.SerializeObject(prevVal));
-                    command.Parameters.AddWithValue("@afterVal", JsonConvert.SerializeObject(afterVal));
-
                     connection.Open();
-                    command.ExecuteNonQuery();
+                    using (SqlTransaction transaction = connection.BeginTransaction())
+                    {
+                        try
+                        {
+                            using (SqlCommand command = new SqlCommand("InsertAuditLog", connection, transaction))
+                            {
+                                command.CommandType = CommandType.StoredProcedure;
+
+                                // Add parameters
+                                command.Parameters.AddWithValue("@UserId", userId);
+                                command.Parameters.AddWithValue("@PrevVal", prevVal);
+                                command.Parameters.AddWithValue("@afterVal", afterVal);
+
+                                command.ExecuteNonQuery();
+                            }
+
+                            transaction.Commit();
+                        }
+                        catch (Exception)
+                        {
+                            // Rollback the transaction if an error occurs
+                            transaction.Rollback();
+                            throw; // Rethrow the exception to be handled globally
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "An error occurred while updating user details: {Message}", ex.Message);
             }
         }
     }

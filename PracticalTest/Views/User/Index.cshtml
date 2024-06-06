@@ -11,8 +11,7 @@
 
     <form method="get" action="@Url.Action("Index", "User")">
         <div class="form-group">
-            <label for="nric">NRIC</label>
-            <input type="text" class="form-control" id="NRICOrName" name="NRICOrName" value="@Request.QueryString["NRICOrName"]" />
+            <input type="text" class="form-control" id="NRICOrName" name="NRICOrName" value="@Request.QueryString["NRICOrName"]" placeholder="NRIC or Name"/>
         </div>
         <button type="submit" class="btn btn-primary">Search</button>
     </form>
