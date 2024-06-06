@@ -46,9 +46,16 @@ namespace PracticalTest.Controllers
                 }
 
                 user.Age = AgeCalculator(user.Birthday);
-                _userRepository.InsertUser(user);
-                _userRepository.InsertAuditLog(_userRepository.GetUser(NameORNRIC: user.NRIC, userId: 0).FirstOrDefault().Id, string.Empty, JsonConvert.SerializeObject(user));
-                TempData["Message"] = "User created successfully.";
+                try
+                {
+                    _userRepository.InsertUser(user);
+                    _userRepository.InsertAuditLog(_userRepository.GetUser(NameORNRIC: user.NRIC, userId: 0).FirstOrDefault().Id, string.Empty, JsonConvert.SerializeObject(user));
+                    TempData["Message"] = "User created successfully.";
+                }
+                catch (Exception)
+                {
+                    TempData["Message"] = "User failed to create.";
+                }
                 return RedirectToAction("Index");
             }
 
@@ -81,12 +88,19 @@ namespace PracticalTest.Controllers
             {
                 var prevVal = _userRepository.GetUser(NameORNRIC: user.NRIC, userId: user.Id).FirstOrDefault();
                 user.Age = AgeCalculator(user.Birthday);
-                _userRepository.UpdateUser(user);
-                if (JsonConvert.SerializeObject(prevVal) != JsonConvert.SerializeObject(user))
+                try
                 {
-                    _userRepository.InsertAuditLog(user.Id, JsonConvert.SerializeObject(prevVal), JsonConvert.SerializeObject(user));
+                    _userRepository.UpdateUser(user);
+                    if (JsonConvert.SerializeObject(prevVal) != JsonConvert.SerializeObject(user))
+                    {
+                        _userRepository.InsertAuditLog(user.Id, JsonConvert.SerializeObject(prevVal), JsonConvert.SerializeObject(user));
+                    }
+                    TempData["Message"] = "User updated successfully.";
                 }
-                TempData["Message"] = "User updated successfully.";
+                catch (Exception)
+                {
+                    TempData["Message"] = "User update failed.";
+                }
                 return RedirectToAction("Index");
             }
 
