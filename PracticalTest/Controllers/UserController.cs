@@ -48,6 +48,7 @@ namespace PracticalTest.Controllers
                 user.Age = AgeCalculator(user.Birthday);
                 _userRepository.InsertUser(user);
                 _userRepository.InsertAuditLog(_userRepository.GetUser(NameORNRIC: user.NRIC, userId: 0).FirstOrDefault().Id, string.Empty, JsonConvert.SerializeObject(user));
+                TempData["Message"] = "User created successfully.";
                 return RedirectToAction("Index");
             }
 
@@ -85,6 +86,7 @@ namespace PracticalTest.Controllers
                 {
                     _userRepository.InsertAuditLog(user.Id, JsonConvert.SerializeObject(prevVal), JsonConvert.SerializeObject(user));
                 }
+                TempData["Message"] = "User updated successfully.";
                 return RedirectToAction("Index");
             }
 

@@ -4,6 +4,17 @@
     ViewBag.Title = "User List";
 }
 
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+        $(document).ready(function () {
+            // Check if TempData["Message"] is not null and show the message as a popup
+            var message = "@TempData["Message"]";
+            if (message) {
+                alert(message);
+            }
+        });
+</script>
+
 <button onclick="location.href='@Url.Action("Register", "User")'">Register</button>
 
 <div class="container">
@@ -11,7 +22,7 @@
 
     <form method="get" action="@Url.Action("Index", "User")">
         <div class="form-group">
-            <input type="text" class="form-control" id="NRICOrName" name="NRICOrName" value="@Request.QueryString["NRICOrName"]" placeholder="NRIC or Name"/>
+            <input type="text" class="form-control" id="NRICOrName" name="NRICOrName" value="@Request.QueryString["NRICOrName"]" placeholder="NRIC or Name" />
         </div>
         <button type="submit" class="btn btn-primary">Search</button>
     </form>
